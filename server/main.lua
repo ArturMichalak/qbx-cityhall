@@ -48,7 +48,7 @@ RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
     local itemInfo = Config.Cityhalls[hall].licenses[item]
-    if not Player.Functions.RemoveMoney("cash", itemInfo.cost) then 
+    if not Player.Functions.RemoveMoney("cash", itemInfo.cost) then
         return TriggerClientEvent('ox_lib:notify', source,
             { description = ('You don\'t have enough money on you, you need %s cash'):format(itemInfo.cost),
                 type = 'error' })
@@ -93,9 +93,10 @@ RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job)
     local ped = GetPlayerPed(source)
     local pedCoords = GetEntityCoords(ped)
     local closestCityhall = getClosestHall(pedCoords)
-    local cityhallCoords = Config.Cityhalls[closestCityhall].coords
+    local closestCityhallInfo = Config.Cityhalls[closestCityhall]
+    local cityhallCoords = closestCityhallInfo.coords
     local JobInfo = QBCore.Shared.Jobs[job]
-    if #(pedCoords - cityhallCoords) >= 20.0 or not availableJobs[job] then
+    if #(pedCoords - cityhallCoords) >= 20.0 or not closestCityhallInfo.availableJobs[job] then
         return DropPlayer(source, "Attempted exploit abuse")
     end
     Player.Functions.SetJob(job, 0)

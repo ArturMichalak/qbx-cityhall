@@ -60,7 +60,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
             onSelect = function()
                 TriggerServerEvent('qb-cityhall:server:requestId', item, closestCityhall)
                 if not Config.UseTarget and inRangeCityhall then
-                    lib.showTextUI(Lang:t('menu.open_title'))
+                    lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                 end
             end
         }
@@ -72,7 +72,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
         menu = 'cityhall_menu',
         onExit = function()
             if not Config.UseTarget and inRangeCityhall then
-                lib.showTextUI(Lang:t('menu.open_title'))
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
             end
         end,
         options = identityOptions
@@ -82,53 +82,53 @@ local function OpenCityhallIdentityMenu(closestCityhall)
 end
 
 local function OpenCityhallEmploymentMenu(closestCityhall)
-        local jobOptions = {}
-        for job, label in pairsInOrder(Config.Cityhalls[closestCityhall].availableJobs) do
-            jobOptions[#jobOptions + 1] = {
-                title = label,
-                onSelect = function()
-                    TriggerServerEvent('qb-cityhall:server:ApplyJob', job)
-                    if not Config.UseTarget and inRangeCityhall then
-                        lib.showTextUI(Lang:t('menu.open_title'))
-                    end
-                end
-            }
-        end
-        lib.registerContext({
-            id = 'cityhall_employment_menu',
-            title = 'Employment',
-            menu = 'cityhall_menu',
-            onExit = function()
+    local jobOptions = {}
+    for job, label in pairsInOrder(Config.Cityhalls[closestCityhall].availableJobs) do
+        jobOptions[#jobOptions + 1] = {
+            title = label,
+            onSelect = function()
+                TriggerServerEvent('qb-cityhall:server:ApplyJob', job)
                 if not Config.UseTarget and inRangeCityhall then
-                    lib.showTextUI(Lang:t('menu.open_title'))
+                    lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                 end
-            end,
-            options = jobOptions
-        })
-        lib.showContext('cityhall_employment_menu')
+            end
+        }
+    end
+    lib.registerContext({
+        id = 'cityhall_employment_menu',
+        title = Lang:t('menu.employment_menu_title'),
+        menu = 'cityhall_menu',
+        onExit = function()
+            if not Config.UseTarget and inRangeCityhall then
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
+            end
+        end,
+        options = jobOptions
+    })
+    lib.showContext('cityhall_employment_menu')
 end
 
 local function OpenCityhallMenu()
     local closestCityhall = getClosestHall()
     lib.registerContext({
         id = 'cityhall_menu',
-        title = 'City Hall',
+        title = Lang:t('menu.cityhalllabel'),
         onExit = function()
             if not Config.UseTarget and inRangeCityhall then
-                lib.showTextUI(Lang:t('menu.open_title'))
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
             end
         end,
         options = {
             {
                 title = Lang:t('menu.identity_menu_title'),
-                description = 'Obtain a drivers license or ID card',
+                description = Lang:t('menu.identity_menu_desc'),
                 onSelect = function()
                     OpenCityhallIdentityMenu(closestCityhall)
                 end
             },
             {
-                title = 'Employment',
-                description = 'Select a new job',
+                title = Lang:t('menu.employment_menu_title'),
+                description = Lang:t('menu.employment_menu_desc'),
                 onSelect = function()
                     OpenCityhallEmploymentMenu(closestCityhall)
                 end
@@ -243,7 +243,7 @@ local function spawnPeds()
                     if LocalPlayer.state.isLoggedIn then
                         if current.drivingschool and zone.name == 'driving_school' then
                             inRangeDrivingSchool = true
-                            lib.showTextUI('[E] Take Driving Lessons')
+                            lib.showTextUI(Lang:t('menu.open_schooltitle'))
                             CreateThread(function()
                                 while inRangeDrivingSchool do
                                     Wait(0)
@@ -256,7 +256,7 @@ local function spawnPeds()
                             end)
                         elseif current.cityhall and zone.name == 'cityhall' then
                             inRangeCityhall = true
-                            lib.showTextUI(Lang:t('menu.open_title'))
+                            lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                             CreateThread(function()
                                 while inRangeCityhall do
                                     Wait(0)

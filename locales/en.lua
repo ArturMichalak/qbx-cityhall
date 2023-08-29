@@ -26,7 +26,9 @@ local Translations = {
         employment_menu_title = 'Employment',
         employment_menu_desc = 'Select a new job',
         price = 'Price',
-        open_title = '[E] Open Cityhall',
+        open_cityhalltitle = '[E] Open Cityhall',
+        open_schooltitle = '[E] Take Driving Lessons',
+        cityhalllabel = 'City Hall'
     }
 }
 
