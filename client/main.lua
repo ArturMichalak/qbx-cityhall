@@ -56,7 +56,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
     for item, id in pairsInOrder(availableLicenses) do
         identityOptions[#identityOptions + 1] = {
             title = id.label,
-            description = ('%s: $%s'):format(Lang:t('menu.price'), id.cost),
+            description = Lang:t('menu.price') .. ': ' .. id.cost,
             onSelect = function()
                 TriggerServerEvent('qb-cityhall:server:requestId', item, closestCityhall)
                 if not Config.UseTarget and inRangeCityhall then
@@ -65,6 +65,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
             end
         }
     end
+
     lib.registerContext({
         id = 'cityhall_identity_menu',
         title = Lang:t('menu.identity_menu_title'),
@@ -76,6 +77,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
         end,
         options = identityOptions
     })
+
     lib.showContext('cityhall_identity_menu')
 end
 

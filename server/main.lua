@@ -1,28 +1,18 @@
 local QBCore = exports['qbx-core']:GetCoreObject()
 
--- Functions
+-- Helpers
 
-local function giveStarterItems()
-    local Player = QBCore.Functions.GetPlayer(source)
-    if not Player then return end
-    for _, v in pairs(QBCore.Shared.StarterItems) do
-        local info = {}
-        if v.item == "id_card" then
-            info.citizenid = Player.PlayerData.citizenid
-            info.firstname = Player.PlayerData.charinfo.firstname
-            info.lastname = Player.PlayerData.charinfo.lastname
-            info.birthdate = Player.PlayerData.charinfo.birthdate
-            info.gender = Player.PlayerData.charinfo.gender
-            info.nationality = Player.PlayerData.charinfo.nationality
-        elseif v.item == "driver_license" then
-            info.firstname = Player.PlayerData.charinfo.firstname
-            info.lastname = Player.PlayerData.charinfo.lastname
-            info.birthdate = Player.PlayerData.charinfo.birthdate
-            info.type = "Class C Driver License"
+local function hasValue(tab, val)
+    for _, value in ipairs(tab) do
+        if value == val then
+            return true
         end
-        Player.Functions.AddItem(v.item, 1, nil, info)
     end
+
+    return false
 end
+
+-- Functions
 
 local function getClosestHall(pedCoords)
     local distance = #(pedCoords - Config.Cityhalls[1].coords)
@@ -58,34 +48,16 @@ RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
     local itemInfo = Config.Cityhalls[hall].licenses[item]
-    if not Player.Functions.RemoveMoney("cash", itemInfo.cost) then 
-        return TriggerClientEvent('QBCore:Notify', source, ('You don\'t have enough money on you, you need %s cash'):format(itemInfo.cost), 'error')
+    if not Player.Functions.RemoveMoney("cash", itemInfo.cost) then
+        return TriggerClientEvent('ox_lib:notify', source,
+            { description = ('You don\'t have enough money on you, you need %s cash'):format(itemInfo.cost),
+                type = 'error' })
     end
-    local metadata = {}
-    if item == "id_card" then
-        metadata = {
-            type = string.format('%s %s', Player.PlayerData.charinfo.firstname, Player.PlayerData.charinfo.lastname),
-            description = string.format('CID: %s  \nBirth date: %s  \nSex: %s  \nNationality: %s',
-            Player.PlayerData.citizenid, Player.PlayerData.charinfo.birthdate, Player.PlayerData.charinfo.gender == 0 and 'Male' or 'Female', Player.PlayerData.charinfo.nationality)
-        }
-    elseif item == "driver_license" then
-        metadata = {
-            type = 'Class C Driver License',
-            description = string.format('First name: %s  \nLast name: %s  \nBirth date: %s',
-            Player.PlayerData.charinfo.firstname, Player.PlayerData.charinfo.lastname, Player.PlayerData.charinfo.birthdate)
-        }
-    elseif item == "weaponlicense" then
-        metadata = {
-            type = string.format('%s %s', Player.PlayerData.charinfo.firstname, Player.PlayerData.charinfo.lastname),
-            description = string.format('First name: %s  \nLast name: %s  \nBirth date: %s',
-            Player.PlayerData.charinfo.firstname, Player.PlayerData.charinfo.lastname, Player.PlayerData.charinfo.birthdate)
-        }
-    else
-        return DropPlayer(source, 'Attempted exploit abuse')
-    end
-    if not Player.Functions.AddItem(item, 1, nil, metadata) then return end
-    TriggerClientEvent('inventory:client:ItemBox', source, QBCore.Shared.Items[item], 'add')
-    TriggerClientEvent('QBCore:Notify', source, ('You have received your %s for $%s'):format(QBCore.Shared.Items[item].label, itemInfo.cost), 'success')
+
+    TriggerEvent('qb-cityhall:server:RequestDocument', source, item, 1)
+    TriggerClientEvent('ox_lib:notify', source,
+        { description = ('You have received your %s for $%s'):format(QBCore.Shared.Items[item].label, itemInfo.cost),
+            type = 'success' })
 end)
 
 RegisterNetEvent('qb-cityhall:server:sendDriverTest', function()
@@ -110,7 +82,9 @@ RegisterNetEvent('qb-cityhall:server:sendDriverTest', function()
             TriggerEvent("qb-phone:server:sendNewMailToOffline", citizenid, mailData)
         end
     end
-    TriggerClientEvent('QBCore:Notify', source, "An email has been sent to driving schools, and you will be contacted automatically", 'success')
+    TriggerClientEvent('ox_lib:notify', source,
+        { description = "An email has been sent to driving schools, and you will be contacted automatically",
+            type = 'success' })
 end)
 
 RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job)
@@ -126,38 +100,100 @@ RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job)
         return DropPlayer(source, "Attempted exploit abuse")
     end
     Player.Functions.SetJob(job, 0)
-    TriggerClientEvent('QBCore:Notify', source, Lang:t('info.new_job', {job = JobInfo.label}), 'success')
+    TriggerClientEvent('ox_lib:notify', source, { description = Lang:t('info.new_job', {job = JobInfo.label}), type = 'success' })
 end)
 
-RegisterNetEvent('qb-cityhall:server:getIDs', giveStarterItems)
+RegisterNetEvent('qb-cityhall:server:RequestDocument', function(source, type, amount)
+    local Player = QBCore.Functions.GetPlayer(source)
+    local metadata = {
+        CID = Player.PlayerData.citizenid,
+        FN = Player.PlayerData.charinfo.firstname,
+        LN = Player.PlayerData.charinfo.lastname,
+        DOB = Player.PlayerData.charinfo.birthdate,
+        SEX = Player.PlayerData.charinfo.gender == 0 and 'M' or 'F'
+    }
+
+    if type == 'driver_license' then
+        local licences = ""
+        for _, value in pairs(Player.PlayerData.metadata['licences']['driver']) do
+            licences = licences .. value .. " "
+        end
+        metadata['type'] = licences
+    else
+        metadata['type'] = string.format('%s %s', Player.PlayerData.charinfo.firstname,
+            Player.PlayerData.charinfo.lastname)
+    end
+
+    if metadata['type'] then
+        exports.ox_inventory:AddItem(source, type, amount, metadata)
+        return true
+    else
+        return false
+    end
+end)
 
 -- Commands
 
-lib.addCommand('drivinglicense', {
+lib.addCommand('check-driver-licences', {
+    help = 'Check someone licenses',
+    params = {
+        { name = 'target', help = "ID of a person", type = 'playerId' },
+    }
+}, function (source, args)
+    local Player = QBCore.Functions.GetPlayer(source)
+    local SearchedPlayer = QBCore.Functions.GetPlayer(args.target)
+
+    for i = 1, #Config.DrivingSchools do
+        for id = 1, #Config.DrivingSchools[i].instructors do
+            if Config.DrivingSchools[i].instructors[id] == Player.PlayerData.citizenid then
+                local licences = ""
+                for _, value in pairs(SearchedPlayer.PlayerData.metadata['licences']['driver']) do
+                    licences = licences .. value .. " "
+                end
+            end
+        end
+    end
+end)
+
+lib.addCommand('give-driver-licence', {
     help = 'Give a drivers license to someone',
     params = {
-        { name = 'id', help = "ID of a person", type = 'PlayerId' },
+        { name = 'target', help = "ID of a person", type = 'playerId' },
+        { name = 'cat', help = "Category of license A/B/C/D", type = 'string'}
     }
 }, function(source, args)
-    if not args.id then return TriggerClientEvent('ox_lib:notify', source, { description = "Player Not Online", type = 'error' }) end
+    if not args.target then
+        return TriggerClientEvent('ox_lib:notify', source,
+            { description = "Player Not Online", type = 'error' }) end
+
+    if not args.cat or not hasValue({'A', 'B', 'C', 'D'}, args.cat) then
+        return TriggerClientEvent('ox_lib:notify', source, { description = "Invalid Category", type = 'error' })
+    end
 
     local Player = QBCore.Functions.GetPlayer(source)
-    local SearchedPlayer = QBCore.Functions.GetPlayer(args.id)
+    local SearchedPlayer = QBCore.Functions.GetPlayer(args.target)
+
     if SearchedPlayer then
         if not SearchedPlayer.PlayerData.metadata["licences"]["driver"] then
-            for i = 1, #Config.DrivingSchools do
-                for id = 1, #Config.DrivingSchools[i].instructors do
-                    if Config.DrivingSchools[i].instructors[id] == Player.PlayerData.citizenid then
-                        SearchedPlayer.PlayerData.metadata["licences"]["driver"] = true
+            SearchedPlayer.PlayerData.metadata["licences"]["driver"] = {}
+        end
+
+        for i = 1, #Config.DrivingSchools do
+            for id = 1, #Config.DrivingSchools[i].instructors do
+                if Config.DrivingSchools[i].instructors[id] == Player.PlayerData.citizenid then
+                    if not hasValue(SearchedPlayer.PlayerData.metadata["licences"]["driver"], args.cat) then
+                        SearchedPlayer.PlayerData.metadata["licences"]["driver"]
+                        [#SearchedPlayer.PlayerData.metadata["licences"]["driver"] + 1] = args.cat
                         SearchedPlayer.Functions.SetMetaData("licences", SearchedPlayer.PlayerData.metadata["licences"])
                         TriggerClientEvent('ox_lib:notify', SearchedPlayer.PlayerData.source, { description = "You have passed! Pick up your drivers license at the town hall", type = 'success' })
                         TriggerClientEvent('ox_lib:notify', source, { description = ("Player with ID %s has been granted access to a driving license"):format(SearchedPlayer.PlayerData.source), type = 'success' })
-                        break
+                    else
+                        TriggerClientEvent('ox_lib:notify', source, { description = "Can't give permission for a drivers license, this person already has permission", type = 'error' })
                     end
+
+                    break
                 end
             end
-        else
-            TriggerClientEvent('ox_lib:notify', source, { description = "Can't give permission for a drivers license, this person already has permission", type = 'error' })
         end
     else
         TriggerClientEvent('ox_lib:notify', source, { description = "Player Not Online", type = 'error' })
