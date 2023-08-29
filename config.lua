@@ -28,6 +28,15 @@ Config.Cityhalls = {
                 cost = 50,
                 metadata = "weapon"
             },
+        },
+        availableJobs = {
+            ["unemployed"] = "Unemployed",
+            ["trucker"] = "Trucker",
+            ["taxi"] = "Taxi",
+            ["tow"] = "Tow Truck",
+            ["reporter"] = "News Reporter",
+            ["garbage"] = "Garbage Collector",
+            ["bus"] = "Bus Driver",
         }
     },
 }

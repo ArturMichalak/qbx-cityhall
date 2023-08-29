@@ -2,8 +2,8 @@ local QBCore = exports['qbx-core']:GetCoreObject()
 local PlayerData = QBCore.Functions.GetPlayerData()
 local inRangeCityhall, inRangeDrivingSchool = false, false
 local pedsSpawned = false
-local table_clone = table.clone
 local blips = {}
+local zone
 
 -- Functions
 
@@ -43,32 +43,35 @@ end
 
 local function OpenCityhallIdentityMenu(closestCityhall)
     local licensesMeta = PlayerData.metadata["licences"]
-    local availableLicenses = table_clone(Config.Cityhalls[closestCityhall].licenses)
-    for license in pairs(availableLicenses) do
-        if license and not licensesMeta[license] then
+    local availableLicenses = {}
+    for license, data in pairs(Config.Cityhalls[closestCityhall].licenses) do
+        if data.metadata and not licensesMeta[data.metadata] then
             availableLicenses[license] = nil
+        else
+            availableLicenses[license] = data
         end
     end
+
     local identityOptions = {}
     for item, id in pairsInOrder(availableLicenses) do
         identityOptions[#identityOptions + 1] = {
             title = id.label,
-            description = ('Price: $%s'):format(id.cost),
+            description = ('%s: $%s'):format(Lang:t('menu.price'), id.cost),
             onSelect = function()
                 TriggerServerEvent('qb-cityhall:server:requestId', item, closestCityhall)
                 if not Config.UseTarget and inRangeCityhall then
-                    lib.showTextUI('[E] Open Cityhall')
+                    lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                 end
             end
         }
     end
     lib.registerContext({
         id = 'cityhall_identity_menu',
-        title = 'Identity',
+        title = Lang:t('menu.identity_menu_title'),
         menu = 'cityhall_menu',
         onExit = function()
             if not Config.UseTarget and inRangeCityhall then
-                lib.showTextUI('[E] Open Cityhall')
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
             end
         end,
         options = identityOptions
@@ -77,55 +80,53 @@ local function OpenCityhallIdentityMenu(closestCityhall)
 end
 
 local function OpenCityhallEmploymentMenu(closestCityhall)
-    lib.callback('qb-cityhall:server:receiveJobs', false, function(result)
-        local jobOptions = {}
-        for job, label in pairsInOrder(result) do
-            jobOptions[#jobOptions + 1] = {
-                title = label,
-                onSelect = function()
-                    TriggerServerEvent('qb-cityhall:server:ApplyJob', job)
-                    if not Config.UseTarget and inRangeCityhall then
-                        lib.showTextUI('[E] Open Cityhall')
-                    end
-                end
-            }
-        end
-        lib.registerContext({
-            id = 'cityhall_employment_menu',
-            title = 'Employment',
-            menu = 'cityhall_menu',
-            onExit = function()
+    local jobOptions = {}
+    for job, label in pairsInOrder(Config.Cityhalls[closestCityhall].availableJobs) do
+        jobOptions[#jobOptions + 1] = {
+            title = label,
+            onSelect = function()
+                TriggerServerEvent('qb-cityhall:server:ApplyJob', job)
                 if not Config.UseTarget and inRangeCityhall then
-                    lib.showTextUI('[E] Open Cityhall')
+                    lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                 end
-            end,
-            options = jobOptions
-        })
-        lib.showContext('cityhall_employment_menu')
-    end)
+            end
+        }
+    end
+    lib.registerContext({
+        id = 'cityhall_employment_menu',
+        title = Lang:t('menu.employment_menu_title'),
+        menu = 'cityhall_menu',
+        onExit = function()
+            if not Config.UseTarget and inRangeCityhall then
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
+            end
+        end,
+        options = jobOptions
+    })
+    lib.showContext('cityhall_employment_menu')
 end
 
 local function OpenCityhallMenu()
     local closestCityhall = getClosestHall()
     lib.registerContext({
         id = 'cityhall_menu',
-        title = 'City Hall',
+        title = Lang:t('menu.cityhalllabel'),
         onExit = function()
             if not Config.UseTarget and inRangeCityhall then
-                lib.showTextUI('[E] Open Cityhall')
+                lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
             end
         end,
         options = {
             {
-                title = 'Identity',
-                description = 'Obtain a drivers license or ID card',
+                title = Lang:t('menu.identity_menu_title'),
+                description = Lang:t('menu.identity_menu_desc'),
                 onSelect = function()
                     OpenCityhallIdentityMenu(closestCityhall)
                 end
             },
             {
-                title = 'Employment',
-                description = 'Select a new job',
+                title = Lang:t('menu.employment_menu_title'),
+                description = Lang:t('menu.employment_menu_desc'),
                 onSelect = function()
                     OpenCityhallEmploymentMenu(closestCityhall)
                 end
@@ -240,7 +241,7 @@ local function spawnPeds()
                     if LocalPlayer.state.isLoggedIn then
                         if current.drivingschool and zone.name == 'driving_school' then
                             inRangeDrivingSchool = true
-                            lib.showTextUI('[E] Take Driving Lessons')
+                            lib.showTextUI(Lang:t('menu.open_schooltitle'))
                             CreateThread(function()
                                 while inRangeDrivingSchool do
                                     Wait(0)
@@ -253,7 +254,7 @@ local function spawnPeds()
                             end)
                         elseif current.cityhall and zone.name == 'cityhall' then
                             inRangeCityhall = true
-                            lib.showTextUI('[E] Open Cityhall')
+                            lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                             CreateThread(function()
                                 while inRangeCityhall do
                                     Wait(0)
@@ -279,7 +280,7 @@ local function spawnPeds()
                     end
                 end
 
-                local zone = lib.zones.box({
+                zone = lib.zones.box({
                     name = current.drivingschool and 'driving_school' or 'cityhall',
                     coords = current.coords.xyz,
                     size = vec3(2, 2, 3),
@@ -304,18 +305,27 @@ local function deletePeds()
     end
 end
 
+local function cleanupObjects()
+    deleteBlips()
+    deletePeds()
+    zone:remove()
+end
+
+local function initObjects()
+    initBlips()
+    spawnPeds()
+end
+
 -- Events
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     PlayerData = QBCore.Functions.GetPlayerData()
-    initBlips()
-    spawnPeds()
+    initObjects()
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     PlayerData = {}
-    deleteBlips()
-    deletePeds()
+    cleanupObjects()
 end)
 
 RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
@@ -343,6 +353,10 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    deleteBlips()
-    deletePeds()
+    cleanupObjects()
+end)
+
+AddEventHandler('onResourceStart', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    initObjects()
 end)

@@ -1,13 +1,4 @@
 local QBCore = exports['qbx-core']:GetCoreObject()
-local availableJobs = {
-    ["unemployed"] = "Unemployed",
-    ["trucker"] = "Trucker",
-    ["taxi"] = "Taxi",
-    ["tow"] = "Tow Truck",
-    ["reporter"] = "News Reporter",
-    ["garbage"] = "Garbage Collector",
-    ["bus"] = "Bus Driver",
-}
 
 -- Functions
 
@@ -61,21 +52,14 @@ local function getClosestSchool(pedCoords)
     return closest
 end
 
--- Callbacks
-
-lib.callback.register('qb-cityhall:server:receiveJobs', function(source)
-    return availableJobs
-end)
-
 -- Events
 
 RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
     local itemInfo = Config.Cityhalls[hall].licenses[item]
     if not Player.Functions.RemoveMoney("cash", itemInfo.cost) then 
-        return TriggerClientEvent('QBCore:Notify', src, ('You don\'t have enough money on you, you need %s cash'):format(itemInfo.cost), 'error')
+        return TriggerClientEvent('QBCore:Notify', source, ('You don\'t have enough money on you, you need %s cash'):format(itemInfo.cost), 'error')
     end
     local metadata = {}
     if item == "id_card" then
@@ -97,18 +81,17 @@ RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
             Player.PlayerData.charinfo.firstname, Player.PlayerData.charinfo.lastname, Player.PlayerData.charinfo.birthdate)
         }
     else
-        return DropPlayer(src, 'Attempted exploit abuse')
+        return DropPlayer(source, 'Attempted exploit abuse')
     end
     if not Player.Functions.AddItem(item, 1, nil, metadata) then return end
-    TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
-    TriggerClientEvent('QBCore:Notify', src, ('You have received your %s for $%s'):format(QBCore.Shared.Items[item].label, itemInfo.cost), 'success')
+    TriggerClientEvent('inventory:client:ItemBox', source, QBCore.Shared.Items[item], 'add')
+    TriggerClientEvent('QBCore:Notify', source, ('You have received your %s for $%s'):format(QBCore.Shared.Items[item].label, itemInfo.cost), 'success')
 end)
 
 RegisterNetEvent('qb-cityhall:server:sendDriverTest', function()
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
-    local ped = GetPlayerPed(src)
+    local ped = GetPlayerPed(source)
     local pedCoords = GetEntityCoords(ped)
     local closestDrivingSchool = getClosestSchool(pedCoords)
     local instructors = Config.DrivingSchools[closestDrivingSchool].instructors
@@ -131,15 +114,15 @@ RegisterNetEvent('qb-cityhall:server:sendDriverTest', function()
 end)
 
 RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
-    local ped = GetPlayerPed(src)
+    local ped = GetPlayerPed(source)
     local pedCoords = GetEntityCoords(ped)
     local closestCityhall = getClosestHall(pedCoords)
-    local cityhallCoords = Config.Cityhalls[closestCityhall].coords
+    local closestCityhallInfo = Config.Cityhalls[closestCityhall]
+    local cityhallCoords = closestCityhallInfo.coords
     local JobInfo = QBCore.Shared.Jobs[job]
-    if #(pedCoords - cityhallCoords) >= 20.0 or not availableJobs[job] then
+    if #(pedCoords - cityhallCoords) >= 20.0 or not closestCityhallInfo.availableJobs[job] then
         return DropPlayer(source, "Attempted exploit abuse")
     end
     Player.Functions.SetJob(job, 0)
