@@ -44,7 +44,7 @@ end
 
 -- Events
 
-RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
+RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall, picture)
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return end
     local itemInfo = Config.Cityhalls[hall].licenses[item]
@@ -54,7 +54,7 @@ RegisterNetEvent('qb-cityhall:server:requestId', function(item, hall)
                 type = 'error' })
     end
 
-    TriggerEvent('qb-cityhall:server:RequestDocument', source, item, 1)
+    TriggerEvent('qb-cityhall:server:RequestDocument', source, item, 1, picture)
     TriggerClientEvent('ox_lib:notify', source,
         { description = ('You have received your %s for $%s'):format(QBCore.Shared.Items[item].label, itemInfo.cost),
             type = 'success' })
@@ -103,20 +103,24 @@ RegisterNetEvent('qb-cityhall:server:ApplyJob', function(job)
     TriggerClientEvent('ox_lib:notify', source, { description = Lang:t('info.new_job', {job = JobInfo.label}), type = 'success' })
 end)
 
-RegisterNetEvent('qb-cityhall:server:RequestDocument', function(source, type, amount)
+RegisterNetEvent('qb-cityhall:server:RequestDocument', function(source, type, amount, picture)
     local Player = QBCore.Functions.GetPlayer(source)
+
     local metadata = {
         CID = Player.PlayerData.citizenid,
         FN = Player.PlayerData.charinfo.firstname,
         LN = Player.PlayerData.charinfo.lastname,
         DOB = Player.PlayerData.charinfo.birthdate,
-        SEX = Player.PlayerData.charinfo.gender == 0 and 'M' or 'F'
+        SEX = Player.PlayerData.charinfo.gender == 0 and 'M' or 'F',
+        Picture = picture
     }
 
     if type == 'driver_license' then
         local licences = ""
+        metadata['classes'] = {}
         for _, value in pairs(Player.PlayerData.metadata['licences']['driver']) do
             licences = licences .. value .. " "
+            metadata['classes'][#metadata['classes'] + 1] = value
         end
         metadata['type'] = licences
     else

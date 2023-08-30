@@ -41,6 +41,20 @@ local function pairsInOrder(object, _)
     return iterator
 end
 
+local function getFacePicture()
+    local ped = PlayerPedId()
+    local pedshotHandler = RegisterPedheadshotTransparent(ped)
+    if pedshotHandler == nil or pedshotHandler == 0 then pedshotHandler = RegisterPedheadshot(ped) end
+    while not IsPedheadshotReady(pedshotHandler) or not IsPedheadshotValid(pedshotHandler) do
+        Wait(0)
+    end
+    local picture = GetPedheadshotTxdString(pedshotHandler)
+    UnregisterPedheadshot(pedshotHandler)
+
+    
+    return exports["hctxdToBase64"]:ConvertTxdToBase64(picture)
+end
+
 local function OpenCityhallIdentityMenu(closestCityhall)
     local licensesMeta = PlayerData.metadata["licences"]
     local availableLicenses = {}
@@ -58,7 +72,7 @@ local function OpenCityhallIdentityMenu(closestCityhall)
             title = id.label,
             description = Lang:t('menu.price') .. ': ' .. id.cost,
             onSelect = function()
-                TriggerServerEvent('qb-cityhall:server:requestId', item, closestCityhall)
+                TriggerServerEvent('qb-cityhall:server:requestId', item, closestCityhall, getFacePicture())
                 if not Config.UseTarget and inRangeCityhall then
                     lib.showTextUI(Lang:t('menu.open_cityhalltitle'))
                 end
